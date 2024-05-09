@@ -11,8 +11,8 @@ import (
 )
 
 type Entry struct {
-    ID        int
-    Generated int
+	ID        int
+	Generated int
 }
 
 func main() {
@@ -23,6 +23,15 @@ func main() {
 		log.Fatal(err)
 	}
 	defer db.Close()
+	_, err = db.Exec("CREATE TABLE large_dataset (id SERIAL PRIMARY KEY,generated INT NOT NULL);")
+	if err!=nil{
+		log.Fatal(err)
+	}
+	_,err=db.Exec(`INSERT INTO large_dataset (generated)
+	SELECT generate_series(1, 10000000);`)
+	if err!=nil{
+		log.Fatal(err)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()

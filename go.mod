@@ -1,4 +1,4 @@
-module homework
+module 32.GO
 
 go 1.22.1
 
