@@ -1,63 +1,47 @@
 package main
 
 import (
-	"net/http"
+	"context"
+	"database/sql"
+	"fmt"
+	"log"
+	"time"
 
-	"github.com/gin-gonic/gin"
+	_ "github.com/lib/pq"
 )
-type User struct{
-	Name string `json:"name"`
-}
 
-var users = []User{{Name: "John"}, {Name: "Doe"}}
+type Entry struct {
+    ID        int
+    Generated int
+}
 
 func main() {
-	router := gin.Default()
-
-	router.GET("/users", GetUsers)
-	router.POST("/users", AddUsers)
-	router.PUT("/users/:name", UpdateUsers)
-	router.Run(":8080")
-}
-
-func GetUsers(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK,users)
-}
-
-func UserName(ctx *gin.Context){
-	name:=ctx.Param("name")
-	ctx.JSON(http.StatusOK,"Hello " + name)
-}
-
-func AddUsers(ctx *gin.Context){
-	var user User
-	err:=ctx.BindJSON(&user)
-	if err!=nil{
-		ctx.JSON(http.StatusBadRequest, "Bad request")
-		return
+	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", "localhost", 5432, "postgres", "Abdu0811", "project")
+	db, err := sql.Open("postgres", dsn)
+	if err != nil {
+		fmt.Println("error")
+		log.Fatal(err)
 	}
-	users=append(users, user)
-	ctx.JSON(http.StatusOK,"Yaxshi qoshildi")
+	defer db.Close()
 
-}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
 
-func UpdateUsers(ctx *gin.Context){
-	var user User
-	err:=ctx.BindJSON(&user)
-	if err!=nil{
-		ctx.JSON(http.StatusBadRequest, "Bad request")
-		return
+	rows, err := db.QueryContext(ctx, "SELECT id, generated FROM large_dataset")
+	if err != nil {
+		log.Fatal(err)
 	}
+	defer rows.Close()
 
-	name:=ctx.Param("name")
-
-	for index,v:=range users{
-		if v.Name==name{
-			users[index].Name=user.Name
+	for rows.Next() {
+		var entry Entry
+		if err := rows.Scan(&entry.ID, &entry.Generated); err != nil {
+			log.Fatal(err)
 		}
+		fmt.Println(entry)
 	}
-	
-	ctx.JSON(http.StatusOK,"O'zgartirildi")
+
+	if err = rows.Err(); err != nil {
+		log.Fatal(err)
+	}
 }
-
-
